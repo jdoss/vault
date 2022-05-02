@@ -91,6 +91,23 @@ the entire validity period. It is suggested to use "truncate" for
 intermediate CAs and "permit" only for root CAs.`,
 		Default: "err",
 	}
+	fields["use_for_issuance"] = &framework.FieldSchema{
+		Type: framework.TypeBool,
+		Description: `Whether or not to use this issuer for signing
+CSRs and issuing new certificates. Disabling allows the key to persist
+for e.g., CRL generation without allowing new certificates to be signed.
+Setting both use_for_issuance and use_for_crl_signing to false is effectively
+a soft delete.`,
+		Default: true,
+	}
+	fields["use_for_crl_signing"] = &framework.FieldSchema{
+		Type: framework.TypeBool,
+		Description: `Whether or not to use this issuer for signing
+CRLs. Disabling allows for per-issuer overriding of CRL generation
+properties. Setting both use_for_issuance and use_for_crl_signing to false
+is effectively a soft delete.`,
+		Default: true,
+	}
 
 	return &framework.Path{
 		// Returns a JSON entry.
@@ -162,6 +179,8 @@ func (b *backend) pathGetIssuer(ctx context.Context, req *logical.Request, data 
 			"manual_chain":            respManualChain,
 			"ca_chain":                issuer.CAChain,
 			"leaf_not_after_behavior": issuer.LeafNotAfterBehavior,
+			"use_for_issuance":        issuer.UseForIssuance,
+			"use_for_crl_signing":     issuer.UseForCRLSigning,
 		},
 	}, nil
 }
@@ -202,6 +221,10 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 		// errs should still be surfaced, however.
 		return logical.ErrorResponse(err.Error()), nil
 	}
+	if err == errIssuerNameInUse && issuer.Name != newName {
+		// When the new name is in use but isn't this name, throw an error.
+		return logical.ErrorResponse(err.Error()), nil
+	}
 
 	newPath := data.Get("manual_chain").([]string)
 	rawLeafBehavior := data.Get("leaf_not_after_behavior").(string)
@@ -217,6 +240,9 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 		return logical.ErrorResponse("Unknown value for field `leaf_not_after_behavior`. Possible values are `err`, `truncate`, and `permit`."), nil
 	}
 
+	newForIssuance := data.Get("use_for_issuance").(bool)
+	newForCRLs := data.Get("use_for_crl_signing").(bool)
+
 	modified := false
 
 	if newName != issuer.Name {
@@ -226,6 +252,16 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 
 	if newLeafBehavior != issuer.LeafNotAfterBehavior {
 		issuer.LeafNotAfterBehavior = newLeafBehavior
+		modified = true
+	}
+
+	if newForIssuance != issuer.UseForIssuance {
+		issuer.UseForIssuance = newForIssuance
+		modified = true
+	}
+
+	if newForCRLs != issuer.UseForCRLSigning {
+		issuer.UseForCRLSigning = newForCRLs
 		modified = true
 	}
 
@@ -289,6 +325,8 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 			"manual_chain":            respManualChain,
 			"ca_chain":                issuer.CAChain,
 			"leaf_not_after_behavior": issuer.LeafNotAfterBehavior,
+			"use_for_issuance":        issuer.UseForIssuance,
+			"use_for_crl_signing":     issuer.UseForCRLSigning,
 		},
 	}, nil
 }

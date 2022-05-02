@@ -65,6 +65,8 @@ type issuerEntry struct {
 	ManualChain          []issuerID                `json:"manual_chain" structs:"manual_chain" mapstructure:"manual_chain"`
 	SerialNumber         string                    `json:"serial_number" structs:"serial_number" mapstructure:"serial_number"`
 	LeafNotAfterBehavior certutil.NotAfterBehavior `json:"not_after_behavior" structs:"not_after_behavior" mapstructure:"not_after_behavior"`
+	UseForIssuance       bool                      `json:"use_for_issuance" structs:"use_for_issuance" mapstructure:"use_for_issuance"`
+	UseForCRLSigning     bool                      `json:"use_for_crl_signing" structs:"use_for_crl_signing" mapstructure:"use_for_crl_signing"`
 }
 
 type localCRLConfigEntry struct {
@@ -445,6 +447,8 @@ func importIssuer(ctx context.Context, s logical.Storage, certValue string, issu
 	result.Name = issuerName
 	result.Certificate = certValue
 	result.LeafNotAfterBehavior = certutil.ErrNotAfterBehavior
+	result.UseForIssuance = true
+	result.UseForCRLSigning = true
 
 	// We shouldn't add CSRs or multiple certificates in this
 	countCertificates := strings.Count(result.Certificate, "-BEGIN ")

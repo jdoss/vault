@@ -80,7 +80,7 @@ func getFormat(data *framework.FieldData) string {
 }
 
 // fetchCAInfo will fetch the CA info, will return an error if no ca info exists.
-func fetchCAInfo(ctx context.Context, b *backend, req *logical.Request, issuerRef string) (*certutil.CAInfoBundle, error) {
+func fetchCAInfo(ctx context.Context, b *backend, req *logical.Request, issuerRef string, issuance bool, crl bool) (*certutil.CAInfoBundle, error) {
 	entry, bundle, err := fetchCertBundle(ctx, b, req.Storage, issuerRef)
 	if err != nil {
 		switch err.(type) {
@@ -91,6 +91,14 @@ func fetchCAInfo(ctx context.Context, b *backend, req *logical.Request, issuerRe
 		default:
 			return nil, errutil.InternalError{Err: fmt.Sprintf("error fetching CA info: %v", err)}
 		}
+	}
+
+	if issuance && !entry.UseForIssuance {
+		return nil, errutil.InternalError{Err: fmt.Sprintf("issuer %v is not configured for issuing certificates", issuerRef)}
+	}
+
+	if crl && !entry.UseForCRLSigning {
+		return nil, errutil.InternalError{Err: fmt.Sprintf("issuer %v is not configured for signing CRLs", issuerRef)}
 	}
 
 	if bundle == nil {

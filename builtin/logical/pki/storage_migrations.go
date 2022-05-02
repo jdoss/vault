@@ -172,7 +172,11 @@ func getLegacyCertBundle(ctx context.Context, s logical.Storage) (*issuerEntry, 
 	// Fake a storage entry with backwards compatibility in mind. We only need
 	// the fields in the CAInfoBundle; everything else doesn't matter.
 	issuer := &issuerEntry{
+		ID:                   "legacy-entry-shim",
+		Name:                 "legacy-entry-shim",
 		LeafNotAfterBehavior: certutil.ErrNotAfterBehavior,
+		UseForIssuance:       true,
+		UseForCRLSigning:     true,
 	}
 
 	return issuer, cb, nil
